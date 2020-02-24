@@ -36,3 +36,38 @@ class Writer:
             },
             os.path.join(self.args.checkpoints_dir,
                          'checkpoint_{:03d}.pt'.format(epoch)))
+
+    def load_state_dict(self, model, optimizer, scheduler):
+        """
+        Set parameters converted from Caffe models authors of VGGFace2 provide.
+        See https://www.robots.ox.ac.uk/~vgg/data/vgg_face2/.
+
+        Arguments:
+            model: model
+            fname: file name of parameters converted from a Caffe model, assuming the file format is Pickle.
+        """
+        fname = self.args.checkpoint
+        with open(fname, 'rb') as f:
+            weights = torch.load(f, encoding='latin1')
+
+        model_weights = weights['model_state_dict']
+        own_state = model.state_dict()
+        for name, param in model_weights.items():
+            if name in own_state:
+                try:
+                    own_state[name].copy_(param)
+                except Exception:
+                    raise RuntimeError('While copying the parameter named {}, whose dimensions in the model are {} and whose '\
+                                    'dimensions in the checkpoint are {}.'.format(name, own_state[name].size(), param.size()))
+            else:
+                raise KeyError('unexpected key "{}" in state_dict'.format(name))
+
+
+        optimizer_weights = weights['optimizer_state_dict']
+        own_state = optimizer.state_dict()
+        own_state = optimizer_weights.copy()
+
+
+        scheduler_weights = weights['scheduler_state_dict']
+        own_state = scheduler.state_dict()
+        own_state = scheduler_weights.copy()

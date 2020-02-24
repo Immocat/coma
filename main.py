@@ -19,7 +19,7 @@ parser.add_argument('--split', type=str, default='interpolation')
 parser.add_argument('--test_exp', type=str, default='bareteeth')
 parser.add_argument('--n_threads', type=int, default=4)
 parser.add_argument('--device_idx', type=int, default=0)
-
+parser.add_argument('--visualize_freq', type=int, default=50)
 # network hyperparameters
 parser.add_argument('--out_channels',
                     nargs='+',
@@ -42,6 +42,7 @@ parser.add_argument('--epochs', type=int, default=300)
 
 # others
 parser.add_argument('--seed', type=int, default=1)
+parser.add_argument('--checkpoint', type=str, default=None)
 
 args = parser.parse_args()
 
@@ -76,9 +77,11 @@ test_loader = DataLoader(meshdata.test_dataset, batch_size=args.batch_size)
 
 # generate/load transform matrices
 transform_fp = osp.join(args.data_fp, 'transform.pkl')
+mesh = Mesh(filename=template_fp)
+# mesh.write_obj("what.obj")
 if not osp.exists(transform_fp):
     print('Generating transform matrices...')
-    mesh = Mesh(filename=template_fp)
+    # mesh = Mesh(filename=template_fp)
     ds_factors = [4, 4, 4, 4]
     _, A, D, U, F = mesh_sampling.generate_transform_matrices(mesh, ds_factors)
     tmp = {'face': F, 'adj': A, 'down_transform': D, 'up_transform': U}
@@ -125,6 +128,6 @@ scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                             args.decay_step,
                                             gamma=args.lr_decay)
 
-train_eval.run(model, train_loader, test_loader, args.epochs, optimizer,
-               scheduler, writer, device)
-train_eval.eval_error(model, test_loader, device, meshdata, args.out_dir)
+train_eval.run(model, train_loader, test_loader, args, optimizer,
+               scheduler, writer, device, meshdata, mesh)
+train_eval.eval_error(model, test_loader, device, meshdata, args, mesh)
